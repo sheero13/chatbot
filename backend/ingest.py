@@ -1,60 +1,65 @@
 import os
+import re
 
-from langchain_community.document_loaders import TextLoader
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 
 from langchain_huggingface import HuggingFaceEmbeddings
 
 from langchain_community.vectorstores import Chroma
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
+# =========================================
+# KNOWLEDGE BASE PATH
+# =========================================
 
-# Path to knowledge base folder
 DATA_PATH = "../knowledge_base"
 
-# Store all loaded documents
 documents = []
 
-# Load all .txt files
+# =========================================
+# LOAD FILES
+# =========================================
+
 for file in os.listdir(DATA_PATH):
 
     if file.endswith(".txt"):
 
         file_path = os.path.join(DATA_PATH, file)
 
-        loader = TextLoader(
-            file_path,
-            encoding="utf-8"
-        )
+        with open(file_path, "r", encoding="utf-8") as f:
 
-        docs = loader.load()
+            text = f.read()
 
-        documents.extend(docs)
+        # Split using Q:
+        qa_pairs = re.split(r"\n(?=Q:)", text)
+
+        for pair in qa_pairs:
+
+            pair = pair.strip()
+
+            if len(pair) > 20:
+
+                documents.append(
+                    Document(page_content=pair)
+                )
 
         print(f"Loaded: {file}")
 
-print(f"\nTotal documents loaded: {len(documents)}")
+print(f"\nTotal Q&A documents: {len(documents)}")
 
-# Split documents into chunks
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=300,
-    chunk_overlap=50
-)
+# =========================================
+# EMBEDDINGS
+# =========================================
 
-texts = text_splitter.split_documents(documents)
-
-print(f"Total chunks created: {len(texts)}")
-
-# Load embedding model
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-# Create vector database
+# =========================================
+# CREATE VECTOR DB
+# =========================================
+
 db = Chroma.from_documents(
-    texts,
+    documents,
     embeddings,
     persist_directory="vector_db"
 )

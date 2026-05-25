@@ -1,0 +1,31 @@
+SSN College Sports and Clubs
+
+Q: Does SSN College have sports facilities?
+A: Yes, SSN College has facilities for cricket, football, basketball, badminton and athletics.
+
+Q: Is there a gym inside the campus?
+A: Yes, a gym facility is available for students inside the campus.
+
+Q: Are there technical clubs in SSN College?
+A: Yes, SSN College has coding clubs, robotics clubs and AI research groups.
+
+Q: Does the college conduct culturals?
+A: Yes, SSN College conducts annual cultural and technical festivals.
+
+Q: Is there an entrepreneurship cell?
+A: Yes, SSN College has an entrepreneurship development cell for startups and innovation.
+
+Q: Are students allowed to participate in hackathons?
+A: Yes, students are encouraged to participate in inter-college and national level hackathons.
+
+Q: Does SSN College have NSS activities?
+A: Yes, NSS activities and social service programs are conducted regularly.
+
+Q: Is there a canteen inside the campus?
+A: Yes, multiple food courts and canteens are available inside the campus.
+
+Q: Are internship opportunities available?
+A: Yes, students receive internship opportunities through campus collaborations and industry connections.
+
+Q: Does the college support research projects?
+A: Yes, students and faculty actively work on funded research and innovation projects.

@@ -4,36 +4,32 @@ from langgraph.graph import StateGraph, END
 
 from langchain_ollama import ChatOllama
 
-from langchain_core.messages import (
-    HumanMessage,
-    SystemMessage
-)
-
 from langchain_huggingface import HuggingFaceEmbeddings
 
 from langchain_community.vectorstores import Chroma
 
+import re
+
 
 # =========================================
-# LOAD LOCAL LLM
+# LOAD LLM
 # =========================================
 
 llm = ChatOllama(
-    model="tinyllama"
+    model="tinyllama",
+    temperature=0
 )
 
-
 # =========================================
-# LOAD EMBEDDING MODEL
+# LOAD EMBEDDINGS
 # =========================================
 
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-
 # =========================================
-# LOAD VECTOR DATABASE
+# LOAD VECTOR DB
 # =========================================
 
 db = Chroma(
@@ -41,9 +37,8 @@ db = Chroma(
     embedding_function=embeddings
 )
 
-
 # =========================================
-# DEFINE GRAPH STATE
+# GRAPH STATE
 # =========================================
 
 class ChatState(TypedDict):
@@ -54,11 +49,18 @@ class ChatState(TypedDict):
 
 
 # =========================================
-# ROUTER NODE
+# CLEAN TEXT FUNCTION
 # =========================================
-# =========================================
-# ROUTER NODE
-# =========================================
+
+def clean_text(text):
+
+    text = text.lower()
+
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+
+    return text.strip()
+
+
 # =========================================
 # GUARDRAIL NODE
 # =========================================
@@ -67,33 +69,24 @@ def guardrail_node(state: ChatState):
 
     question = state["question"].lower()
 
-    # Blocked topics
     blocked_keywords = [
 
-        # Politics
         "modi",
         "rahul gandhi",
         "politics",
-        "political party",
 
-        # Security
         "password",
-        "admin access",
         "server access",
         "database password",
-        "security system",
 
-        # Harmful
         "hack",
-        "bypass",
         "attack",
+        "bypass",
 
-        # Sensitive
         "confidential",
         "private data"
     ]
 
-    # Check blocked content
     for word in blocked_keywords:
 
         if word in question:
@@ -101,75 +94,109 @@ def guardrail_node(state: ChatState):
             return {
                 "route": "blocked",
                 "answer": (
-                    "Sorry, I cannot answer "
-                    "that type of question."
+                    "Sorry, I cannot answer that type of question."
                 )
             }
 
-    # Safe query
     return {
         "route": "safe"
     }
+
+
+# =========================================
+# ROUTER NODE
+# =========================================
 
 def router_node(state: ChatState):
 
     question = state["question"].lower()
 
-    # Human escalation keywords
     escalation_keywords = [
+
         "hod",
         "principal",
         "dean",
-        "staff",
-        "faculty",
-        "admission office",
         "complaint",
         "issue",
         "problem"
     ]
 
-    # Escalation phrases
-    escalation_phrases = [
-        "talk to",
-        "speak to",
-        "contact"
-    ]
-
-    # Check escalation keywords
-    keyword_match = any(
-        keyword in question
-        for keyword in escalation_keywords
-    )
-
-    # Check escalation phrase + person/entity
-    phrase_match = False
-
-    for phrase in escalation_phrases:
-
-        if phrase in question:
-
-            if (
-                "hod" in question
-                or "principal" in question
-                or "staff" in question
-                or "faculty" in question
-                or "office" in question
-                or "teacher" in question
-            ):
-
-                phrase_match = True
-
-    # Route to human only if meaningful escalation
-    if keyword_match or phrase_match:
+    if any(keyword in question for keyword in escalation_keywords):
 
         return {
             "route": "human"
         }
 
-    # Otherwise use RAG
     return {
         "route": "rag"
     }
+
+
+# =========================================
+# DIRECT QA MATCH FUNCTION
+# =========================================
+
+def extract_direct_answer(question, docs):
+
+    cleaned_question = clean_text(question)
+
+    question_words = set(cleaned_question.split())
+
+    best_answer = None
+
+    best_score = 0
+
+    for doc in docs:
+
+        content = doc.page_content
+
+        lines = content.split("\n")
+
+        for i, line in enumerate(lines):
+
+            line = line.strip()
+
+            if line.lower().startswith("q:"):
+
+                stored_question = (
+                    line.replace("Q:", "")
+                    .strip()
+                )
+
+                cleaned_stored = clean_text(stored_question)
+
+                stored_words = set(cleaned_stored.split())
+
+                common_words = (
+                    question_words.intersection(stored_words)
+                )
+
+                score = len(common_words)
+
+                # Find answer line
+                if score > best_score:
+
+                    if i + 1 < len(lines):
+
+                        next_line = lines[i + 1].strip()
+
+                        if next_line.lower().startswith("a:"):
+
+                            answer = (
+                                next_line.replace("A:", "")
+                                .strip()
+                            )
+
+                            best_answer = answer
+
+                            best_score = score
+
+    # Minimum similarity threshold
+    if best_score >= 2:
+
+        return best_answer
+
+    return None
 
 
 # =========================================
@@ -180,63 +207,73 @@ def rag_node(state: ChatState):
 
     question = state["question"]
 
-    # Retrieve documents
+    # Retrieve docs
     docs = db.similarity_search(
         question,
-        k=3
+        k=8
     )
 
-    # Build context
-    context_parts = []
+    # =====================================
+    # TRY DIRECT QA EXTRACTION FIRST
+    # =====================================
 
-    for doc in docs:
+    direct_answer = extract_direct_answer(
+        question,
+        docs
+    )
 
-        content = doc.page_content.strip()
+    if direct_answer:
 
-        if len(content) > 20:
-            context_parts.append(content)
+        return {
+            "answer": direct_answer
+        }
 
-    context = "\n".join(context_parts)
+    # =====================================
+    # BUILD CONTEXT
+    # =====================================
 
-    # If no context found
+    context = "\n\n".join([
+        doc.page_content
+        for doc in docs
+    ])
+
     if not context.strip():
 
         return {
             "answer": "I could not find that information."
         }
 
-    # STRICT PROMPT
+    # =====================================
+    # LLM FALLBACK
+    # =====================================
+
     prompt = f"""
-You are an SSN College information assistant.
+You are an SSN College assistant.
 
-Answer ONLY using the information provided below.
-
-IMPORTANT RULES:
-- Return ONLY the final answer.
-- Maximum 1 sentence.
-- DO NOT explain.
-- DO NOT repeat the question.
-- DO NOT say "based on the context".
-- DO NOT mention rules.
-- DO NOT generate examples.
-- If answer is unavailable, reply EXACTLY:
+STRICT RULES:
+- Answer ONLY using the context
+- Keep answer under 2 sentences
+- Do not explain
+- Do not add extra information
+- If answer unavailable say exactly:
 I could not find that information.
 
-INFORMATION:
+Context:
 {context}
 
-QUESTION:
+Question:
 {question}
 
-ANSWER:
+Answer:
 """
 
     response = llm.invoke(prompt)
 
     answer = response.content.strip()
 
-    # Cleanup
-    unwanted_phrases = [
+    # Remove junk
+    banned_phrases = [
+
         "based on",
         "context",
         "rule",
@@ -245,7 +282,7 @@ ANSWER:
         "example:"
     ]
 
-    for phrase in unwanted_phrases:
+    for phrase in banned_phrases:
 
         if phrase.lower() in answer.lower():
 
@@ -253,31 +290,34 @@ ANSWER:
                 "answer": "I could not find that information."
             }
 
-    # Limit output size
     answer = answer.split("\n")[0]
 
-    if len(answer) > 250:
-        answer = answer[:250]
+    if len(answer) > 300:
+        answer = answer[:300]
+
+    if not answer.strip():
+        answer = "I could not find that information."
 
     return {
         "answer": answer
     }
 
+
 # =========================================
-# HUMAN ESCALATION NODE
+# HUMAN NODE
 # =========================================
 
 def human_node(state: ChatState):
 
     return {
         "answer": (
-            "Your query has been forwarded "
-            "to the appropriate department staff."
+            "Your query has been forwarded to the appropriate department staff."
         )
     }
 
+
 # =========================================
-# BLOCK NODE
+# BLOCKED NODE
 # =========================================
 
 def blocked_node(state: ChatState):
@@ -286,8 +326,9 @@ def blocked_node(state: ChatState):
         "answer": state["answer"]
     }
 
+
 # =========================================
-# ROUTING DECISION
+# ROUTE DECISION
 # =========================================
 
 def route_decision(state: ChatState):
@@ -296,22 +337,23 @@ def route_decision(state: ChatState):
 
 
 # =========================================
-# BUILD LANGGRAPH
+# BUILD GRAPH
 # =========================================
 
 graph = StateGraph(ChatState)
 
-# Add nodes
 graph.add_node("guardrail", guardrail_node)
+
 graph.add_node("blocked", blocked_node)
+
 graph.add_node("router", router_node)
+
 graph.add_node("rag", rag_node)
+
 graph.add_node("human", human_node)
 
-# Entry point
 graph.set_entry_point("guardrail")
 
-# Guardrail routing
 graph.add_conditional_edges(
     "guardrail",
     route_decision,
@@ -321,7 +363,6 @@ graph.add_conditional_edges(
     }
 )
 
-# Conditional routing
 graph.add_conditional_edges(
     "router",
     route_decision,
@@ -331,10 +372,10 @@ graph.add_conditional_edges(
     }
 )
 
-# End nodes
 graph.add_edge("blocked", END)
+
 graph.add_edge("rag", END)
+
 graph.add_edge("human", END)
 
-# Compile graph
 app_graph = graph.compile()

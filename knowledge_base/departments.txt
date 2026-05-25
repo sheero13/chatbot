@@ -1,14 +1,7 @@
 SSN College Departments
 
 Q: What departments are available in SSN College?
-A: SSN College offers departments including:
-- Computer Science and Engineering
-- Information Technology
-- Electronics and Communication Engineering
-- Electrical and Electronics Engineering
-- Mechanical Engineering
-- Civil Engineering
-- Biomedical Engineering
+A: SSN College offers departments including Computer Science and Engineering,Information Technology,Electronics and Communication Engineering,Electrical and Electronics Engineering,Mechanical Engineering,Civil Engineering,Biomedical Engineering
 
 Q: Does every department have a Head of Department?
 A: Yes, every department has a Head of Department and faculty members.

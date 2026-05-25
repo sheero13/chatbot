@@ -1,14 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
 from upload import router as upload_router
 from graph import app_graph
 
-# FastAPI app
+# =========================================
+# FASTAPI APP
+# =========================================
+
 app = FastAPI()
+
+# Upload routes
 app.include_router(upload_router)
 
-# Enable CORS
+# =========================================
+# ENABLE CORS
+# =========================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,9 +26,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request model
+# =========================================
+# REQUEST MODEL
+# =========================================
+
 class ChatRequest(BaseModel):
     message: str
+
+# =========================================
+# HEALTH CHECK
+# =========================================
 
 @app.get("/")
 def home():
@@ -27,6 +43,10 @@ def home():
     return {
         "message": "SSN chatbot backend running"
     }
+
+# =========================================
+# CHAT ENDPOINT
+# =========================================
 
 @app.post("/chat")
 def chat(request: ChatRequest):

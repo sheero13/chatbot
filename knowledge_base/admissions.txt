@@ -7,12 +7,7 @@ Q: Is management quota admission available?
 A: Yes, management quota admissions are available for eligible students.
 
 Q: What documents are required for admission?
-A: Students must submit:
-- 10th marksheet
-- 12th marksheet
-- Transfer Certificate
-- Community Certificate
-- Passport size photographs
+A: Students must submit:10th marksheet,12th marksheet,Transfer Certificate,Community Certificate,Passport size photographs
 
 Q: What is the eligibility for engineering admission?
 A: Students should complete higher secondary education with Physics, Chemistry and Mathematics.
