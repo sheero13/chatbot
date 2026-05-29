@@ -1,229 +1,310 @@
 import React, { useState } from "react";
-import axios from "axios";
-
 import "./App.css";
 
 function App() {
 
-  // Chat states
-  const [message, setMessage] = useState("");
-  const [chat, setChat] = useState([]);
+  // =====================================
+  // STATES
+  // =====================================
+
+  const [question, setQuestion] = useState("");
+
+  const [messages, setMessages] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
-  // File upload state
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [file, setFile] = useState(null);
 
-  // =========================
+  const [uploadMessage, setUploadMessage] = useState("");
+
+  // =====================================
   // SEND MESSAGE
-  // =========================
+  // =====================================
 
   const sendMessage = async () => {
 
-    if (!message.trim()) return;
+  if (!question.trim()) return;
 
-    const userMessage = {
-      sender: "user",
-      text: message
-    };
+  const userQuestion = question;
 
-    setChat((prev) => [...prev, userMessage]);
+  setQuestion("");
 
-    const currentMessage = message;
+  setLoading(true);
 
-    setMessage("");
-    setLoading(true);
+  try {
 
-    try {
+    // =================================
+    // ADD USER MESSAGE
+    // =================================
 
-      const response = await axios.post(
-        "http://127.0.0.1:8000/chat",
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: "user",
+        content: userQuestion
+      }
+    ]);
+
+    // =================================
+    // API CALL
+    // =================================
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/chat",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          message: userQuestion
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    // =================================
+    // ADD BOTH RESPONSES
+    // =================================
+
+    setMessages((prev) => [
+      ...prev,
+
         {
-          message: currentMessage
+          type: "rag",
+          content: data.rag_response
+        },
+
+        {
+          type: "ft",
+          content: data.finetuned_response
         }
-      );
-
-      const botMessage = {
-        sender: "bot",
-        text: response.data.response
-      };
-
-      setChat((prev) => [...prev, botMessage]);
+      ]);
 
     } catch (error) {
 
-      const errorMessage = {
-        sender: "bot",
-        text: "Error connecting to backend."
-      };
+      console.log(error);
 
-      setChat((prev) => [...prev, errorMessage]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "error",
+          content: "Server error"
+        }
+      ]);
     }
 
     setLoading(false);
   };
 
-  // =========================
-  // ENTER KEY SUPPORT
-  // =========================
+  // =====================================
+  // ENTER KEY
+  // =====================================
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
 
     if (e.key === "Enter") {
+
       sendMessage();
     }
   };
 
-  // =========================
-  // FILE UPLOAD
-  // =========================
+  const uploadFile = async () => {
 
-  const handleUpload = async () => {
+  if (!file) return;
 
-    if (!selectedFile) {
+  const formData = new FormData();
 
-      alert("Please select a file first");
-      return;
-    }
+  formData.append("file", file);
 
-    const formData = new FormData();
+  try {
 
-    formData.append("file", selectedFile);
+    const response = await fetch(
+      "http://127.0.0.1:8000/upload",
+      {
+        method: "POST",
+        body: formData
+      }
+    );
 
-    try {
+    const data = await response.json();
 
-      const response = await axios.post(
-        "http://127.0.0.1:8000/upload",
-        formData
-      );
+    setUploadMessage(data.message);
 
-      alert(response.data.message);
+  } catch (error) {
 
-      setSelectedFile(null);
+    console.log(error);
 
-    } catch (error) {
-
-      alert("Upload failed");
-    }
+    setUploadMessage("Upload failed");
+  }
   };
-
-  // =========================
+  // =====================================
   // UI
-  // =========================
+  // =====================================
 
   return (
 
     <div className="app">
 
+      {/* ============================ */}
       {/* HEADER */}
+      {/* ============================ */}
+
       <div className="header">
-        <div className="header-title">
-          SSN College AI Assistant
-        </div>
 
-        <div className="header-subtitle">
-          Intelligent RAG-based Student Support System
-        </div>
+        <h1>SSN AI Assistant</h1>
+
+        <p>
+          Compare RAG vs Fine-Tuned TinyLlama
+        </p>
+
       </div>
+      {/* ============================ */}
+      {/* FILE UPLOAD */}
+      {/* ============================ */}
 
+      <div className="upload-section">
+
+        <h2>Upload Knowledge Base</h2>
+
+        <input
+          type="file"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
+
+        <button onClick={uploadFile}>
+          Upload
+        </button>
+
+        {
+          uploadMessage && (
+            <p>{uploadMessage}</p>
+          )
+        }
+
+      </div>
+      {/* ============================ */}
       {/* CHAT AREA */}
+      {/* ============================ */}
+
       <div className="chat-container">
 
-        {chat.map((msg, index) => (
+        {
+          messages.map((msg, index) => (
 
-          <div
-            key={index}
-            className={
-              msg.sender === "user"
-                ? "message-row user-row"
-                : "message-row bot-row"
-            }
-          >
+            <div key={index}>
 
-            <div
-              className={
-                msg.sender === "user"
-                  ? "message user-message"
-                  : "message bot-message"
+              {/* USER MESSAGE */}
+
+              {
+                msg.type === "user" && (
+
+                  <div className="user-box">
+
+                    <div className="label">
+                      YOU
+                    </div>
+
+                    <div className="message">
+                      {msg.content}
+                    </div>
+
+                  </div>
+                )
               }
-            >
 
-              {msg.text}
+              {/* RAG RESPONSE */}
+
+              {
+                msg.type === "rag" && (
+
+                  <div className="rag-box">
+
+                    <div className="label">
+                      RAG MODEL
+                    </div>
+
+                    <div className="message">
+                      {msg.content}
+                    </div>
+
+                  </div>
+                )
+              }
+
+              {/* FINETUNED MODEL */}
+
+              {
+                msg.type === "ft" && (
+
+                  <div className="ft-box">
+
+                    <div className="label">
+                      FINETUNED TINYLLAMA
+                    </div>
+
+                    <div className="message">
+                      {msg.content}
+                    </div>
+
+                  </div>
+                )
+              }
+
+              {/* ERROR */}
+
+              {
+                msg.type === "error" && (
+
+                  <div className="error-box">
+
+                    {msg.content}
+
+                  </div>
+                )
+              }
 
             </div>
-
-          </div>
-
-        ))}
+          ))
+        }
 
         {/* LOADING */}
-        {loading && (
 
-          <div className="message-row bot-row">
+        {
+          loading && (
 
-            <div className="message bot-message typing">
+            <div className="loading">
 
               Thinking...
 
             </div>
-
-          </div>
-
-        )}
+          )
+        }
 
       </div>
 
+      {/* ============================ */}
       {/* INPUT AREA */}
+      {/* ============================ */}
+
       <div className="input-container">
 
         <input
           type="text"
           placeholder="Ask something about SSN College..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyPress}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
 
-        <button
-          className="send-button"
-          onClick={sendMessage}
-        >
+        <button onClick={sendMessage}>
+
           Send
+
         </button>
-
-      </div>
-
-      {/* FLOATING UPLOAD BUTTON */}
-      <div className="floating-upload">
-
-        <label className="upload-circle">
-
-          +
-
-          <input
-            type="file"
-            hidden
-            onChange={(e) =>
-              setSelectedFile(e.target.files[0])
-            }
-          />
-
-        </label>
-
-        {selectedFile && (
-
-          <div className="upload-popup">
-
-            <div className="file-name">
-              {selectedFile.name}
-            </div>
-
-            <button onClick={handleUpload}>
-              Upload
-            </button>
-
-          </div>
-
-        )}
 
       </div>
 
