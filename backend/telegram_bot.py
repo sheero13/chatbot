@@ -10,7 +10,7 @@ from telegram.ext import (
 
 from deep_translator import GoogleTranslator
 
-from langdetect import detect
+import langid
 
 from graph import app_graph
 
@@ -110,7 +110,29 @@ async def handle_message(
 
     try:
 
-        detected_lang = detect(user_message)
+        detected_lang, confidence = langid.classify(user_message)
+
+        print("Confidence:", confidence)
+
+        # Force English if confidence is weak
+        if confidence < -20:
+            detected_lang = "en"
+
+        # Force English for common English words
+        english_keywords = [
+            "what",
+            "does",
+            "do",
+            "is",
+            "are",
+            "hostel",
+            "department",
+            "college",
+            "ssn"
+        ]
+
+        if any(word in user_message.lower() for word in english_keywords):
+            detected_lang = "en"
 
     except:
 
