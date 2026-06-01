@@ -12,6 +12,8 @@ from deep_translator import GoogleTranslator
 
 import langid
 
+import re
+
 from graph import app_graph
 
 # =========================================
@@ -74,6 +76,11 @@ db = Chroma(
     embedding_function=embeddings
 )
 
+def is_english_text(text):
+
+    return bool(
+        re.fullmatch(r"[A-Za-z0-9\s.,!?'-]+", text)
+    )
 
 # =========================================
 # START COMMAND
@@ -110,33 +117,24 @@ async def handle_message(
 
     try:
 
-        detected_lang, confidence = langid.classify(user_message)
+    # If pure English characters
+        if is_english_text(user_message):
 
-        print("Confidence:", confidence)
-
-        # Force English if confidence is weak
-        if confidence < -20:
             detected_lang = "en"
+            confidence = 1
 
-        # Force English for common English words
-        english_keywords = [
-            "what",
-            "does",
-            "do",
-            "is",
-            "are",
-            "hostel",
-            "department",
-            "college",
-            "ssn"
-        ]
+        else:
 
-        if any(word in user_message.lower() for word in english_keywords):
-            detected_lang = "en"
+            detected_lang, confidence = langid.classify(
+                user_message
+            )
 
     except:
 
         detected_lang = "en"
+
+    print("Detected Language:", detected_lang)
+    print("Confidence:", confidence)
 
     print("Detected Language:", detected_lang)
 
