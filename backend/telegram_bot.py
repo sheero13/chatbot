@@ -8,6 +8,12 @@ from telegram.ext import (
     filters
 )
 
+import json
+
+import time 
+
+import psutil
+
 from deep_translator import GoogleTranslator
 
 import langid
@@ -81,6 +87,26 @@ def is_english_text(text):
     return bool(
         re.fullmatch(r"[A-Za-z0-9\s.,!?'-]+", text)
     )
+
+
+
+# =========================================
+# STATS FUNCTIONS
+# =========================================
+
+STATS_FILE = "stats.json"
+
+def load_stats():
+
+    with open(STATS_FILE, "r") as f:
+
+        return json.load(f)
+
+def save_stats(stats):
+
+    with open(STATS_FILE, "w") as f:
+
+        json.dump(stats, f, indent=4)
 
 # =========================================
 # START COMMAND
@@ -159,12 +185,54 @@ async def handle_message(
     # =====================================
     # CHATBOT
     # =====================================
+    start_time = time.time()
 
     result = app_graph.invoke({
         "question": translated_question
     })
 
     bot_reply = result["answer"]
+
+    end_time = time.time()
+
+    latency = end_time - start_time
+
+    # Approx token calculation
+    token_count = len(bot_reply.split())
+
+    tokens_per_sec = token_count / latency
+
+    # RAM usage
+    ram = psutil.virtual_memory().used / (1024 ** 3)
+
+    stats = load_stats()
+
+    stats["total_queries"] += 1
+
+    stats["last_question"] = user_message
+
+    stats["last_language"] = detected_lang
+
+    stats["tokens_per_second"] = round(tokens_per_sec, 2)
+
+    stats["ram_usage"] = round(ram, 2)
+
+    count = stats["total_queries"]
+
+    old_avg = stats["average_latency"]
+
+    new_avg = ((old_avg * (count - 1)) + latency) / count
+
+    stats["average_latency"] = round(new_avg, 2)
+
+    save_stats(stats)
+
+    print(f"Latency: {latency:.2f} sec")
+
+    print(f"Tokens/sec: {tokens_per_sec:.2f}")
+
+    print(f"RAM Usage: {ram:.2f} GB")
+
 
     print("Bot Reply:")
     print(bot_reply)
@@ -303,6 +371,16 @@ async def handle_document(
         # =================================
 
         db.add_documents(documents)
+
+
+        stats = load_stats()
+
+        stats["documents_uploaded"] += 1
+
+        stats["total_chunks"] += len(documents)
+
+        save_stats(stats)
+
 
         print("Documents added to vector DB")
 

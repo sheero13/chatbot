@@ -1,0 +1,10 @@
+{
+    "total_queries": 2,
+    "documents_uploaded": 1,
+    "total_chunks": 26,
+    "average_latency": 0.17,
+    "last_question": "\u0bae\u0bbe\u0ba3\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95\u0bc8\u0b95\u0bcd\u0b95\u0bc1 \u0b8e\u0bb5\u0bcd\u0bb5\u0bbe\u0bb1\u0bc1 \u0bb5\u0bbf\u0ba3\u0bcd\u0ba3\u0baa\u0bcd\u0baa\u0bbf\u0b95\u0bcd\u0b95\u0bb2\u0bbe\u0bae\u0bcd?",
+    "last_language": "ta",
+    "tokens_per_second": 318.67,
+    "ram_usage": 6.7
+}
