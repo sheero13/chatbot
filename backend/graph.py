@@ -2,11 +2,17 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, END
 
-from langchain_ollama import ChatOllama
+from langchain_community.chat_models import ChatOllama
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from langchain_community.vectorstores import Chroma
+
+from langchain.memory.summary_buffer import (
+    ConversationSummaryBufferMemory
+)
+
+from langchain_community.llms import Ollama
 
 import re
 
@@ -29,6 +35,20 @@ embeddings = HuggingFaceEmbeddings(
 )
 
 # =========================================
+# MEMORY
+# =========================================
+
+memory_llm = Ollama(
+    model="tinyllama"
+)
+
+memory = ConversationSummaryBufferMemory(
+    llm=memory_llm,
+    max_token_limit=300,
+    return_messages=True
+)
+
+# =========================================
 # LOAD VECTOR DB
 # =========================================
 
@@ -46,6 +66,7 @@ class ChatState(TypedDict):
     question: str
     route: str
     answer: str
+    chat_history: str
 
 
 # =========================================
@@ -173,7 +194,6 @@ def extract_direct_answer(question, docs):
 
                 score = len(common_words)
 
-                # Find answer line
                 if score > best_score:
 
                     if i + 1 < len(lines):
@@ -191,7 +211,6 @@ def extract_direct_answer(question, docs):
 
                             best_score = score
 
-    # Minimum similarity threshold
     if best_score >= 2:
 
         return best_answer
@@ -207,22 +226,66 @@ def rag_node(state: ChatState):
 
     question = state["question"]
 
-    # Retrieve docs
+    # =====================================
+    # LOAD MEMORY
+    # =====================================
+
+    chat_history = memory.load_memory_variables({})
+
+    history = chat_history.get("history", [])
+
+    history_text = "\n".join([
+
+        str(msg.content)
+
+        for msg in history
+    ])
+
+    print("\n========== MEMORY ==========")
+    print(history_text)
+    print("============================")
+
+    # =====================================
+    # ENHANCED QUERY
+    # =====================================
+
+    if history_text.strip():
+
+        enhanced_query = (
+            history_text[-150:] + " " + question
+        )
+
+    else:
+
+        enhanced_query = question
+
+    print("\nEnhanced Query:")
+    print(enhanced_query)
+
+    # =====================================
+    # VECTOR SEARCH
+    # =====================================
+
     docs = db.similarity_search(
-        question,
+        enhanced_query,
         k=8
     )
 
     # =====================================
-    # TRY DIRECT QA EXTRACTION FIRST
+    # DIRECT QA MATCH
     # =====================================
 
     direct_answer = extract_direct_answer(
-        question,
+        enhanced_query,
         docs
     )
 
     if direct_answer:
+
+        memory.save_context(
+            {"input": question},
+            {"output": direct_answer}
+        )
 
         return {
             "answer": direct_answer
@@ -233,7 +296,9 @@ def rag_node(state: ChatState):
     # =====================================
 
     context = "\n\n".join([
+
         doc.page_content
+
         for doc in docs
     ])
 
@@ -244,34 +309,50 @@ def rag_node(state: ChatState):
         }
 
     # =====================================
-    # LLM FALLBACK
+    # PROMPT
     # =====================================
 
     prompt = f"""
 You are an SSN College assistant.
 
+Use BOTH:
+1. Conversation history
+2. Retrieved context
+
+to answer the latest question.
+
 STRICT RULES:
-- Answer ONLY using the context
-- Keep answer under 2 sentences
-- Do not explain
-- Do not add extra information
-- If answer unavailable say exactly:
+- Keep answers under 2 sentences
+- Answer directly
+- Do not repeat full context
+- Answer only from retrieved context
+- If answer unavailable say:
 I could not find that information.
 
-Context:
+Conversation History:
+{history_text}
+
+Retrieved Context:
 {context}
 
-Question:
+Current Question:
 {question}
 
 Answer:
 """
 
+    # =====================================
+    # LLM RESPONSE
+    # =====================================
+
     response = llm.invoke(prompt)
 
     answer = response.content.strip()
 
-    # Remove junk
+    # =====================================
+    # CLEAN OUTPUT
+    # =====================================
+
     banned_phrases = [
 
         "based on",
@@ -286,17 +367,26 @@ Answer:
 
         if phrase.lower() in answer.lower():
 
-            return {
-                "answer": "I could not find that information."
-            }
+            answer = "I could not find that information."
 
     answer = answer.split("\n")[0]
 
     if len(answer) > 300:
+
         answer = answer[:300]
 
     if not answer.strip():
+
         answer = "I could not find that information."
+
+    # =====================================
+    # SAVE MEMORY
+    # =====================================
+
+    memory.save_context(
+        {"input": question},
+        {"output": answer}
+    )
 
     return {
         "answer": answer
