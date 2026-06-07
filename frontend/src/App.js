@@ -75,7 +75,8 @@ function App() {
 
         {
           type: "rag",
-          content: data.rag_response
+          content: data.rag_response,
+          evaluation: data.evaluation
         },
 
         {
@@ -228,7 +229,47 @@ function App() {
                     </div>
 
                     <div className="message">
-                      {msg.content}
+
+                      {/* MAIN ANSWER */}
+                      <div>
+                        {msg.content}
+                      </div>
+
+                      {/* EVALUATION LAYER */}
+                      {
+                        msg.evaluation && (
+
+                          <div className="evaluation-box">
+
+                            <h4>RAG Evaluation</h4>
+
+                            <p>
+                              <strong>Grounded:</strong>{" "}
+                              {msg.evaluation.grounded ? "YES" : "NO"}
+                            </p>
+
+                            <p>
+                              <strong>Method:</strong>{" "}
+                              {msg.evaluation.method}
+                            </p>
+
+                            <p>
+                              <strong>Retrieval Score:</strong>{" "}
+                              {msg.evaluation.score}
+                            </p>
+
+                            <p>
+                              <strong>Source:</strong>
+                            </p>
+
+                            <div className="source-box">
+                              {msg.evaluation.source}
+                            </div>
+
+                          </div>
+                        )
+                      }
+
                     </div>
 
                   </div>

@@ -117,7 +117,8 @@ def chat(request: ChatRequest):
     # ==================================
 
     rag_result = app_graph.invoke({
-        "question": user_question
+    "question": user_question,
+    "platform": "web"
     })
 
     rag_answer = rag_result["answer"]
@@ -136,7 +137,9 @@ def chat(request: ChatRequest):
 
     return {
 
-        "rag_response": rag_answer,
+        "rag_response": rag_result["answer"],
+
+        "evaluation": rag_result.get("evaluation", {}),
 
         "finetuned_response": ft_answer
     }

@@ -191,7 +191,8 @@ async def handle_message(
     start_time = time.time()
 
     result = app_graph.invoke({
-        "question": translated_question
+    "question": translated_question,
+    "platform": "telegram"
     })
 
     bot_reply = result["answer"]

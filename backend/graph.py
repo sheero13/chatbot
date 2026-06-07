@@ -72,6 +72,9 @@ class ChatState(TypedDict):
     answer: str
     chat_history: str
 
+    evaluation: dict
+    platform: str
+
 # =========================================
 # FOLLOW-UP DETECTION
 # =========================================
@@ -86,7 +89,7 @@ def is_followup_question(question):
         "that",
         "those",
         "these",
-        
+
         "available",
 
         "what about",
@@ -303,6 +306,7 @@ def evaluate_rag_answer(answer, retrieved_docs):
 def rag_node(state: ChatState):
 
     question = state["question"]
+    platform = state.get("platform", "web")
 
     # =====================================
     # LOAD MEMORY
@@ -412,14 +416,26 @@ True
 
 ━━━━━━━━━━━━━━━
 """
+        if platform == "telegram":
+            final_answer = direct_answer + evaluation_text
+        else:
+            final_answer = direct_answer
 
-        final_answer = (
-            direct_answer +
-            evaluation_text
-        )
 
         return {
-            "answer": final_answer
+
+            "answer": final_answer,
+
+            "evaluation": {
+
+                "grounded": True,
+
+                "score": score,
+
+                "source": source_doc[:250],
+
+                "method": "Direct QA Match"
+            }
         }
 
     # =====================================
@@ -571,11 +587,37 @@ Answer:
 
 ━━━━━━━━━━━━━━━
 """
+    retrieved_docs = []
 
-    final_answer = answer + evaluation_text
+    for i, doc in enumerate(docs):
 
+        retrieved_docs.append({
+            "doc_number": i + 1,
+            "content": doc.page_content[:300]
+        })
+
+    if platform == "telegram":
+        final_answer = answer + evaluation_text
+    else:
+        final_answer = answer
     return {
-        "answer": final_answer
+
+        "answer": final_answer,
+
+        "evaluation": {
+
+            "grounded": not evaluation["hallucination"],
+
+            "score": evaluation["overlap_score"],
+
+            "source": (
+                evaluation["source_document"][:250]
+                if evaluation["source_document"]
+                else "No source found"
+            ),
+
+            "method": "LLM + RAG"
+        }
     }
 
 
