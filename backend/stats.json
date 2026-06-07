@@ -1,10 +1,10 @@
 {
-    "total_queries": 12,
+    "total_queries": 21,
     "documents_uploaded": 1,
     "total_chunks": 26,
-    "average_latency": 3.35,
-    "last_question": "whether wifi and study rooms are available?",
+    "average_latency": 3.84,
+    "last_question": "who are you?",
     "last_language": "en",
-    "tokens_per_second": 102.63,
-    "ram_usage": 7.1
+    "tokens_per_second": 1.58,
+    "ram_usage": 7.16
 }

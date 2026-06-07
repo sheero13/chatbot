@@ -26,6 +26,7 @@ llm = ChatOllama(
     temperature=0
 )
 
+
 # =========================================
 # LOAD EMBEDDINGS
 # =========================================
@@ -33,6 +34,7 @@ llm = ChatOllama(
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
+
 
 # =========================================
 # MEMORY
@@ -48,6 +50,7 @@ memory = ConversationSummaryBufferMemory(
     return_messages=True
 )
 
+
 # =========================================
 # LOAD VECTOR DB
 # =========================================
@@ -56,6 +59,7 @@ db = Chroma(
     persist_directory="vector_db",
     embedding_function=embeddings
 )
+
 
 # =========================================
 # GRAPH STATE
@@ -68,9 +72,36 @@ class ChatState(TypedDict):
     answer: str
     chat_history: str
 
+# =========================================
+# FOLLOW-UP DETECTION
+# =========================================
+
+def is_followup_question(question):
+
+    followup_words = [
+
+        "it",
+        "they",
+        "them",
+        "that",
+        "those",
+        "these",
+        
+        "available",
+
+        "what about",
+        "how about",
+        "is it",
+        "are they",
+        "does it"
+    ]
+
+    q = question.lower()
+
+    return any(word in q for word in followup_words)
 
 # =========================================
-# CLEAN TEXT FUNCTION
+# CLEAN TEXT
 # =========================================
 
 def clean_text(text):
@@ -167,6 +198,8 @@ def extract_direct_answer(question, docs):
 
     best_score = 0
 
+    best_doc = None
+
     for doc in docs:
 
         content = doc.page_content
@@ -211,11 +244,56 @@ def extract_direct_answer(question, docs):
 
                             best_score = score
 
+                            best_doc = content
+
     if best_score >= 2:
 
-        return best_answer
+        return best_answer, best_doc, best_score
 
-    return None
+    return None, None, 0
+
+
+# =========================================
+# EVALUATION FUNCTION
+# =========================================
+
+def evaluate_rag_answer(answer, retrieved_docs):
+
+    answer_words = set(
+        clean_text(answer).split()
+    )
+
+    best_overlap = 0
+
+    best_doc = None
+
+    for doc in retrieved_docs:
+
+        doc_words = set(
+            clean_text(doc.page_content).split()
+        )
+
+        overlap = len(
+            answer_words.intersection(doc_words)
+        )
+
+        if overlap > best_overlap:
+
+            best_overlap = overlap
+
+            best_doc = doc.page_content
+
+    hallucination = False
+
+    if best_overlap < 3:
+
+        hallucination = True
+
+    return {
+        "hallucination": hallucination,
+        "overlap_score": best_overlap,
+        "source_document": best_doc
+    }
 
 
 # =========================================
@@ -249,15 +327,23 @@ def rag_node(state: ChatState):
     # ENHANCED QUERY
     # =====================================
 
-    if history_text.strip():
+    # =====================================
+    # SMART MEMORY USAGE
+    # =====================================
+
+    if is_followup_question(question):
 
         enhanced_query = (
-            history_text[-150:] + " " + question
+            history_text[-120:] + " " + question
         )
+
+        print("\nUsing MEMORY for retrieval")
 
     else:
 
         enhanced_query = question
+
+        print("\nUsing ONLY current question")
 
     print("\nEnhanced Query:")
     print(enhanced_query)
@@ -272,23 +358,68 @@ def rag_node(state: ChatState):
     )
 
     # =====================================
+    # PRINT RETRIEVED DOCS
+    # =====================================
+
+    print("\n========== RETRIEVED DOCS ==========")
+
+    for i, doc in enumerate(docs):
+
+        print(f"\nDOC {i+1}:")
+        print(doc.page_content[:300])
+
+    print("\n====================================")
+
+    # =====================================
     # DIRECT QA MATCH
     # =====================================
 
-    direct_answer = extract_direct_answer(
+    direct_answer, source_doc, score = extract_direct_answer(
         enhanced_query,
         docs
     )
 
     if direct_answer:
 
+        print("\n========== DIRECT QA MATCH ==========")
+        print("Matched using direct retrieval")
+        print("Similarity Score:", score)
+
+        print("\nSOURCE DOCUMENT:")
+        print(source_doc[:500])
+
+        print("=====================================")
+
         memory.save_context(
             {"input": question},
             {"output": direct_answer}
         )
 
+        evaluation_text = f"""
+
+━━━━━━━━━━━━━━━
+📊 RAG METRICS
+━━━━━━━━━━━━━━━
+
+✅ Grounded Response:
+True
+
+📄 Retrieval Score:
+{score}
+
+📚 Source:
+{source_doc[:250]}
+
+━━━━━━━━━━━━━━━
+"""
+
+        final_answer = (
+            direct_answer +
+            evaluation_text
+        )
+
         return {
-            "answer": direct_answer
+            "answer": final_answer
         }
 
     # =====================================
@@ -380,6 +511,37 @@ Answer:
         answer = "I could not find that information."
 
     # =====================================
+    # EVALUATION LAYER
+    # =====================================
+
+    evaluation = evaluate_rag_answer(
+        answer,
+        docs
+    )
+
+    print("\n========== EVALUATION ==========")
+
+    print("Hallucination Detected:",
+          evaluation["hallucination"])
+
+    print("Overlap Score:",
+          evaluation["overlap_score"])
+
+    print("\nMOST RELEVANT SOURCE DOCUMENT:\n")
+
+    if evaluation["source_document"]:
+
+        print(
+            evaluation["source_document"][:700]
+        )
+
+    else:
+
+        print("No supporting document found")
+
+    print("\n================================")
+
+    # =====================================
     # SAVE MEMORY
     # =====================================
 
@@ -388,8 +550,32 @@ Answer:
         {"output": answer}
     )
 
+    # =====================================
+    # TELEGRAM OUTPUT
+    # =====================================
+
+    evaluation_text = f"""
+
+━━━━━━━━━━━━━━━
+📊 RAG METRICS
+━━━━━━━━━━━━━━━
+
+✅ Grounded Response:
+{not evaluation["hallucination"]}
+
+📄 Retrieval Score:
+{evaluation["overlap_score"]}
+
+📚 Source:
+{evaluation["source_document"][:250] if evaluation["source_document"] else "No source found"}
+
+━━━━━━━━━━━━━━━
+"""
+
+    final_answer = answer + evaluation_text
+
     return {
-        "answer": answer
+        "answer": final_answer
     }
 
 
