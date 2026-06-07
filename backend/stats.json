@@ -1,10 +1,10 @@
 {
-    "total_queries": 22,
+    "total_queries": 27,
     "documents_uploaded": 1,
     "total_chunks": 26,
-    "average_latency": 3.73,
-    "last_question": "tell me about hostel facilities?",
+    "average_latency": 4.74,
+    "last_question": "tell me about hostel facilities",
     "last_language": "en",
-    "tokens_per_second": 29.39,
-    "ram_usage": 7.17
+    "tokens_per_second": 39.76,
+    "ram_usage": 7.18
 }

@@ -32,7 +32,8 @@ llm = ChatOllama(
 # =========================================
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name="BAAI/bge-base-en-v1.5",
+    encode_kwargs={"normalize_embeddings": True}
 )
 
 

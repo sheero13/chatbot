@@ -77,7 +77,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # =========================================
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name="BAAI/bge-base-en-v1.5",
+    encode_kwargs={"normalize_embeddings": True}
 )
 
 db = Chroma(
@@ -96,8 +97,24 @@ def is_english_text(text):
 # =========================================
 # STATS FUNCTIONS
 # =========================================
-
+LOGS_FILE = "logs.json"
 STATS_FILE = "stats.json"
+
+def load_logs():
+    if not os.path.exists(LOGS_FILE):
+        with open(LOGS_FILE, "w") as f:
+            json.dump([], f, indent=4)
+        return []
+
+    with open(LOGS_FILE, "r") as f:
+        return json.load(f)
+
+def save_log(entry):
+    logs = load_logs()
+    logs.append(entry)
+
+    with open(LOGS_FILE, "w") as f:
+        json.dump(logs, f, indent=4)
 
 def load_stats():
 
@@ -258,7 +275,15 @@ async def handle_message(
 
     print("Final Reply:")
     print(final_reply)
+    log_entry = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "user_message": user_message,
+        "language": detected_lang,
+        "bot_reply": final_reply,
+        "latency": round(latency, 2)
+    }
 
+    save_log(log_entry)
     await update.message.reply_text(final_reply)
 
 

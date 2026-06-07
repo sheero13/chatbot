@@ -1,0 +1,16 @@
+[
+    {
+        "timestamp": "2026-06-08 01:00:43",
+        "user_message": "whether it has wifi facilities?",
+        "language": "en",
+        "bot_reply": "I could not find that information.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\ud83d\udcca RAG METRICS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u2705 Grounded Response:\nFalse\n\n\ud83d\udcc4 Retrieval Score:\n0\n\n\ud83d\udcda Source:\nNo source found\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n",
+        "latency": 43.4
+    },
+    {
+        "timestamp": "2026-06-08 01:01:03",
+        "user_message": "tell me about hostel facilities",
+        "language": "en",
+        "bot_reply": "Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\ud83d\udcca RAG METRICS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u2705 Grounded Response:\nTrue\n\n\ud83d\udcc4 Retrieval Score:\n2\n\n\ud83d\udcda Source:\nQ: What facilities are available in the hostel?\nA: Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n",
+        "latency": 0.98
+    }
+]

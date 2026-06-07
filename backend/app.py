@@ -12,10 +12,30 @@ import torch
 
 from upload import router as upload_router
 from graph import app_graph
+import json
+import os
+import time
 
+LOGS_FILE = "api_logs.json"
 # ======================================
 # FASTAPI APP
 # ======================================
+def load_logs():
+    if not os.path.exists(LOGS_FILE):
+        with open(LOGS_FILE, "w") as f:
+            json.dump([], f, indent=4)
+        return []
+
+    with open(LOGS_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_log(entry):
+    logs = load_logs()
+    logs.append(entry)
+
+    with open(LOGS_FILE, "w") as f:
+        json.dump(logs, f, indent=4)
 
 app = FastAPI()
 
@@ -110,6 +130,7 @@ def home():
 @app.post("/chat")
 def chat(request: ChatRequest):
 
+    start_time = time.time()
     user_question = request.message
 
     # ==================================
@@ -130,7 +151,22 @@ def chat(request: ChatRequest):
     ft_answer = generate_ft_answer(
         user_question
     )
+    end_time = time.time()
+    latency = round(end_time - start_time, 3)
 
+    # ==============================
+    # LOG ENTRY
+    # ==============================
+    log_entry = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "question": user_question,
+        "rag_response": rag_answer,
+        "finetuned_response": ft_answer,
+        "evaluation": rag_result.get("evaluation", {}),
+        "latency_sec": latency
+    }
+
+    save_log(log_entry)
     # ==================================
     # RETURN BOTH
     # ==================================
