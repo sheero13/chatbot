@@ -12,5 +12,12 @@
         "language": "en",
         "bot_reply": "Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\ud83d\udcca RAG METRICS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u2705 Grounded Response:\nTrue\n\n\ud83d\udcc4 Retrieval Score:\n2\n\n\ud83d\udcda Source:\nQ: What facilities are available in the hostel?\nA: Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n",
         "latency": 0.98
+    },
+    {
+        "timestamp": "2026-06-08 11:28:12",
+        "user_message": "tell me about hostel facilities",
+        "language": "en",
+        "bot_reply": "Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\ud83d\udcca RAG METRICS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n\u2705 Grounded Response:\nTrue\n\n\ud83d\udcc4 Retrieval Score:\n2\n\n\ud83d\udcda Source:\nQ: What facilities are available in the hostel?\nA: Hostel facilities include:WiFi,Study rooms,Laundry facilities,Dining facilities,Security services.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n",
+        "latency": 12.82
     }
 ]

@@ -3,7 +3,7 @@ import re
 
 from langchain_core.documents import Document
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from langchain_community.vectorstores import Chroma
 
@@ -51,7 +51,8 @@ print(f"\nTotal Q&A documents: {len(documents)}")
 # =========================================
 
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name="BAAI/bge-base-en-v1.5",
+    encode_kwargs={"normalize_embeddings": True}
 )
 
 # =========================================
